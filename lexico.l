@@ -10,7 +10,7 @@ NUMBER	[0-9]+
 
 %%
 
-"if"			{return T_IF;}
+"if"			{ return T_IF;      }
 "then"			{ return T_THEN; 	}
 "else"			{ return T_ELSE; 	}
 "end"			{ return T_END; 	}
@@ -29,9 +29,13 @@ NUMBER	[0-9]+
 ")"				{ return T_RPAR;	}
 ";"				{ return T_SEMICOL;	}
 ":=" 			{ return T_ASSIGN; 	}
-\n				{;}
-[\t\r ]+		{;}	/* ignore whitespace */
-{NUMBER}		{ return NUMBER;	}
+[\n\t\r ]+		{;}	/* ignore whitespace */
+.		        {return yytext[0];}
+
+{NUMBER}		{   
+                    yylval.numero = atoi(yytext);
+                    return NUMBER;	
+                }
 {IDENTIFIER}	{ return IDENTIFIER;}
 
 %%

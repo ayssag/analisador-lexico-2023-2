@@ -2,15 +2,31 @@
 /* considerando notacao polonesa para expressoes */
 %{
 	#include <stdio.h> 
-
+	#include <string>
+	#include "louden/code.h"
+	
 	extern int yylex();
+	extern int yydebug;
 	extern FILE* yyin;
-	//#define YYDEBUG 1
+	extern FILE* yyout;
+
+	/* TM location number for current instruction emission */
+	static int emitLoc = 0 ;
+	
+	/* Highest TM location emitted so far
+   	For use in conjunction with emitSkip,
+   	emitBackup, and emitRestore */
+	static int highEmitLoc = 0;
+
+	std::string strinstr, strdesc;
 	
 	void yyerror(const char *str);
 
 %}
-%token NUMBER
+%union {
+	int numero;
+}
+%token <numero> NUMBER
 %token IDENTIFIER
 
 %token T_IF 
@@ -57,7 +73,10 @@ assign_stmt: 		IDENTIFIER T_ASSIGN exp 	{;}
 ;
 read_stmt: 			T_READ IDENTIFIER 	{;}
 ;
-write_stmt: 		T_WRITE exp 	{;}
+write_stmt: 		T_WRITE exp 	{
+						strinstr = "OUT", strdesc = "write ac";
+						emitRO( (char*) strinstr.c_str() ,ac,0,0, (char*) strdesc.c_str() );
+					}
 ;
 exp: 				simple_exp comparison_op simple_exp 	{;}
 					|simple_exp 							{;}
@@ -75,7 +94,10 @@ term:				term mulop factor	{;}
 mulop:				T_MUL|T_DIV				{;}
 ;
 factor:				T_LPAR exp T_RPAR 		{;}
-					| NUMBER  		{;}
+					| NUMBER  		{ 
+						strinstr = "LDC", strdesc = "load const";
+						emitRM( (char*) strinstr.c_str(),ac,$1,0, (char*) strdesc.c_str() );
+					}
 					| IDENTIFIER	{;}
 ;
 %%
@@ -84,11 +106,68 @@ void yyerror(const char *str) {
 	printf("erro sintatico\n");
 }
 
-int main(){
+/* Procedure emitRO emits a register-only
+ * TM instruction
+ * op = the opcode
+ * r = target register
+ * s = 1st source register
+ * t = 2nd source register
+ * c = a comment to be printed if TraceCode is TRUE
+ */
+void emitRO(char* op, int r, int s, int t, char *c){
+	fprintf(yyout,"%3d:  %5s  %d,%d,%d ",emitLoc++,op,r,s,t);
+	//if (TraceCode) fprintf(code,"\t%s",c) ;
+	fprintf(yyout,"\n") ;
+	//if (highEmitLoc < emitLoc) highEmitLoc = emitLoc ;
+} /* emitRO */
+
+/* Procedure emitRM emits a register-to-memory
+ * TM instruction
+ * op = the opcode
+ * r = target register
+ * d = the offset
+ * s = the base register
+ * c = a comment to be printed if TraceCode is TRUE
+ */
+void emitRM(char* op, int r, int d, int s, char *c){ 
+	fprintf(yyout,"%3d:  %5s  %d,%d(%d) ",emitLoc++,op,r,d,s);
+	//if (TraceCode) fprintf(code,"\t%s",c) ;
+	fprintf(yyout,"\n") ;
+	//if (highEmitLoc < emitLoc)  highEmitLoc = emitLoc ;
+} /* emitRM */
+
+int main(int argc, char **argv){
 	#if YYDEBUG
 		yydebug = 1;
 	#endif
-	yyparse();
+	//	extern int yydebug;
+	//	yydebug=1;
+
+	++argv; --argc; 	    /* abre arquivo de entrada se houver */
+	if(argc > 0)
+		yyin = fopen(argv[0],"rt");
+	else
+		yyin = stdin;    /* cria arquivo de saida se especificado */
+	if(argc > 1)
+		yyout = fopen(argv[1],"wt");
+	else
+		yyout = stdout;
+
+	//emitComment("Standard prelude:");
+	strinstr = "LD", strdesc = "load maxaddress from location 0";
+	emitRM((char*)strinstr.c_str(),mp,0,ac,(char*)strdesc.c_str());
+	strinstr = "ST", strdesc = "clear location 0";
+	emitRM((char*)strinstr.c_str(),ac,0,ac,(char*)strdesc.c_str());
+	//emitComment("End of standard prelude.");
+
+	yyparse ();
+
+	//emitComment("End of execution.");
+	strinstr = "HALT", strdesc = "";
+	emitRO((char*)strinstr.c_str(),0,0,0,(char*)strdesc.c_str());
+
+	fclose(yyin);
+	fclose(yyout);
 	return 0;
 }
 
