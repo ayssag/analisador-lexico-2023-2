@@ -1,4 +1,4 @@
-Repositório para atividades da disciplina Compiladores 2023/2.
+Repositório para atividades da disciplina Compiladores 2023/2 da Universidade de Brasília.
 
 ## Alunos:
 
