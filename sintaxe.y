@@ -3,31 +3,66 @@
 %{
 	#include <stdio.h> 
 	#include <string>
+	#include <cstring>
 	#include "louden/code.h"
 	
+	#define YYDEBUG 1
+
 	extern int yylex();
 	extern int yydebug;
 	extern FILE* yyin;
 	extern FILE* yyout;
 
-	/* TM location number for current instruction emission */
-	static int emitLoc = 0 ;
-	
-	/* Highest TM location emitted so far
-   	For use in conjunction with emitSkip,
-   	emitBackup, and emitRestore */
-	static int highEmitLoc = 0;
+	int savedLoc1;
+	int savedLoc2;
 
-	std::string strinstr, strdesc;
-	
+	int tmp_offset = 0;
+
+	//begin semantico
+		struct regTabSimb {
+			char *nome; /* nome do simbolo */
+			char *tipo; /* tipo_int ou tipo_cad ou nsa */
+			char *natureza; /* variavel ou procedimento */
+			char *usado; /* sim ou nao */
+			int locMem;
+			struct regTabSimb *prox; /* ponteiro */
+		};
+		typedef struct regTabSimb regTabSimb;
+		regTabSimb *tabSimb = (regTabSimb *)0;
+		regTabSimb *colocaSimb();
+		int erroSemantico;
+
+		static int proxLocMemVar = 0;
+	//end semantico
+
+
+	//begin gerador de codigo	
+		int locMemId = 0; /* para recuperacao na TS */
+
+		/* TM location number for current instruction emission */
+		static int emitLoc = 0 ;
+		
+		/* Highest TM location emitted so far
+		For use in conjunction with emitSkip,
+		emitBackup, and emitRestore */
+		static int highEmitLoc = 0;
+
+		std::string strinstr, strdesc;
+		char strtypeint[] = "tipo_int", strvar[] = "variavel", strbool[] = "nao";
+	//end gerador de codigo
+
+
 	void yyerror(const char *str);
-
+	int recuperaLocMemId(char *nomeSimb);
+	int constaTabSimb(char *nomeSimb);
+	regTabSimb *colocaSimb(char *nomeSimb, char *tipoSimb, char *naturezaSimb, char *usadoSimb,int loc);
 %}
 %union {
 	int numero;
+	char* cadeia; 
 }
 %token <numero> NUMBER
-%token IDENTIFIER
+%token <cadeia> IDENTIFIER
 
 %token T_IF 
 %token T_THEN
@@ -52,8 +87,17 @@
 %%
 /* Regras definindo a GLC e acoes correspondentes */
 /* neste nosso exemplo quase todas as acoes estao vazias */
-program:			stmt_sequence	    		{printf ("Programa sintaticamente correto!\n");}
-					|/* empty */				{printf ("sintaxe incorreta!\n");}
+program:			stmt_sequence	{
+						printf("\nSintaxe ok.\n");
+						if (erroSemantico) 
+							printf("\nErro semantico: esqueceu de declarar alguma variavel que usou...\n");
+						else 
+							printf("\nSemantica ok: se variaveis usadas, elas foram declaradas ok.\n");
+		
+					}
+					|/* empty */	{
+						printf ("Sintaxe incorreta!\n");	
+					}
 ;
 stmt_sequence:		stmt_sequence T_SEMICOL statement 	{;}
 					|statement					{;}
@@ -67,11 +111,30 @@ statement:			if_stmt				{;}
 if_stmt:			T_IF exp T_THEN stmt_sequence T_END 						{;}
 					|T_IF exp T_THEN stmt_sequence T_ELSE stmt_sequence T_END	{;}		
 ;
-repeat_stmt: 		T_REPEAT stmt_sequence T_UNTIL exp {;}
+repeat_stmt: 		T_REPEAT {
+						/*savedLoc1 = emitSkip(0)*/;
+					}
+					stmt_sequence{
+						/*emitRM_Abs("JEQ",ac,savedLoc1,"repeat: retorna à origem")*/;
+					} T_UNTIL exp {;}
 ; 
-assign_stmt: 		IDENTIFIER T_ASSIGN exp 	{;}
+assign_stmt: 		IDENTIFIER T_ASSIGN exp 	 {
+						if(!constaTabSimb($1)){
+							colocaSimb($1,strtypeint,strvar,strbool,proxLocMemVar++);
+						}
+						locMemId = recuperaLocMemId($1);
+						strinstr = "ST", strdesc = "atribuicao: armazena valor";
+						emitRM((char*) strinstr.c_str(),ac,locMemId,gp,(char*) strdesc.c_str());
+					}
 ;
-read_stmt: 			T_READ IDENTIFIER 	{;}
+read_stmt: 			T_READ IDENTIFIER 	{
+						if(!constaTabSimb($2)){
+							colocaSimb($2,strtypeint,strvar,strbool,proxLocMemVar++);
+						}
+						locMemId = recuperaLocMemId($2);
+						strinstr = "ST", strdesc = "atribuicao: armazena valor";
+						emitRM((char*) strinstr.c_str(),ac,locMemId,gp,(char*) strdesc.c_str());
+					}
 ;
 write_stmt: 		T_WRITE exp 	{
 						strinstr = "OUT", strdesc = "write ac";
@@ -83,58 +146,142 @@ exp: 				simple_exp comparison_op simple_exp 	{;}
 ;
 comparison_op: 		T_LT|T_EQ {;}
 ;
-simple_exp:			simple_exp addop term 	{;}
+simple_exp:			simple_exp {
+    					emitRM("ST", ac, tmp_offset--, mp, "dando store da esquerda");
+  					}
+					addop term				{;}
 					|term					{;}
 ;
-addop:				T_PLUS|T_MINUS		{;}
+addop:				T_PLUS{
+						emitRM("LD", ac1, ++tmp_offset, mp, "dando load da esquerda");
+						emitRO("ADD", ac, ac1, ac, "operacao +");
+					}
+					|T_MINUS{
+						emitRM("LD", ac1, ++tmp_offset, mp, "dando load da esquerda");
+						emitRO("SUB", ac, ac1, ac, "operacao -");
+					}
 ;
-term:				term mulop factor	{;} 
+term:				term{
+						emitRM("ST", ac, tmp_offset--, mp, "dando store da esquerda");
+					}
+					mulop factor	{;} 
 					|factor				{;}
 ;
-mulop:				T_MUL|T_DIV				{;}
+mulop:				T_MUL{
+						emitRM("LD", ac1, ++tmp_offset, mp, "dando load da esquerda");
+						emitRO("MUL", ac, ac1, ac, "operacao *");
+					}
+  					|T_DIV{
+						emitRM("LD", ac1, ++tmp_offset, mp, "dando load da esquerda");
+						emitRO("DIV", ac, ac1, ac, "operacao *");
+					}
 ;
 factor:				T_LPAR exp T_RPAR 		{;}
 					| NUMBER  		{ 
 						strinstr = "LDC", strdesc = "load const";
 						emitRM( (char*) strinstr.c_str(),ac,$1,0, (char*) strdesc.c_str() );
 					}
-					| IDENTIFIER	{;}
+					| IDENTIFIER	{
+						printf("banana");
+						if(!constaTabSimb($1)){
+							erroSemantico = 1 ;		
+						}
+						else{
+							locMemId = recuperaLocMemId($1);
+							strinstr = "LD", strdesc = "carrega valor de id em ac";
+							emitRM((char*) strinstr.c_str(), ac, locMemId, gp, (char*) strdesc.c_str());
+						}
+					}
 ;
 %%
+
+// begin semantico
+	regTabSimb *colocaSimb(char *nomeSimb, char *tipoSimb, char *naturezaSimb, char *usadoSimb,int loc){
+		regTabSimb *ptr;
+		ptr = (regTabSimb *) malloc (sizeof(regTabSimb));
+
+		ptr->nome= (char *) malloc(strlen(nomeSimb)+1);
+		ptr->tipo= (char *) malloc(strlen(tipoSimb)+1);
+		ptr->natureza= (char *) malloc(strlen(naturezaSimb)+1);
+		ptr->usado= (char *) malloc(strlen(usadoSimb)+1);
+
+		std::strcpy (ptr->nome,nomeSimb);
+		std::strcpy (ptr->tipo,tipoSimb);
+		std::strcpy (ptr->natureza,naturezaSimb);
+		std::strcpy (ptr->usado,usadoSimb);
+		ptr->locMem= loc;
+
+		ptr->prox= (struct regTabSimb *)tabSimb;
+		tabSimb= ptr;
+		return ptr;
+	}
+
+	int constaTabSimb(char *nomeSimb) {
+		regTabSimb *ptr;
+		for (ptr=tabSimb; ptr!=(regTabSimb *)0; ptr=(regTabSimb *)ptr->prox)
+		if (strcmp(ptr->nome,nomeSimb)==0) return 1;
+		return 0;
+	}
+// end semantico 
+
+//begin gerador de codigo
+	void emitRO(char* op, int r, int s, int t, char *c){
+		/* Procedure emitRO emits a register-only
+		* TM instruction
+		* op = the opcode
+		* r = target register
+		* s = 1st source register
+		* t = 2nd source register
+		* c = a comment to be printed if TraceCode is TRUE
+		*/
+		fprintf(yyout,"%3d:  %5s  %d,%d,%d ",emitLoc++,op,r,s,t);
+		//if (TraceCode) fprintf(code,"\t%s",c) ;
+		fprintf(yyout,"\n") ;
+		//if (highEmitLoc < emitLoc) highEmitLoc = emitLoc ;
+	} /* emitRO */
+
+	void emitRM(char* op, int r, int d, int s, char *c){ 
+		/* Procedure emitRM emits a register-to-memory
+		* TM instruction
+		* op = the opcode
+		* r = target register
+		* d = the offset
+		* s = the base register
+		* c = a comment to be printed if TraceCode is TRUE
+		*/
+		fprintf(yyout,"%3d:  %5s  %d,%d(%d) ",emitLoc++,op,r,d,s);
+		//if (TraceCode) fprintf(code,"\t%s",c) ;
+		fprintf(yyout,"\n") ;
+		//if (highEmitLoc < emitLoc)  highEmitLoc = emitLoc ;
+	}
+
+	int emitSkip(int howMany){
+		int i = emitLoc;
+		emitLoc += howMany ;
+		if (highEmitLoc < emitLoc)  highEmitLoc = emitLoc ;
+		return i;
+	}
+
+	void emitRM_Abs( char *op, int r, int a, char * c){ 
+		fprintf(yyout,"%3d:  %5s  %d,%d(%d) ", emitLoc,op,r,a-(emitLoc+1),pc);
+		++emitLoc ;
+		if (highEmitLoc < emitLoc) highEmitLoc = emitLoc ;
+	}
+
+	int recuperaLocMemId(char *nomeSimb) {
+		// recupera locacao de memoria de um id cujo nome eh passado em parametro
+		regTabSimb *ptr;
+		for (ptr=tabSimb; ptr!=(regTabSimb *)0; ptr=(regTabSimb *)ptr->prox)
+		if (strcmp(ptr->nome,nomeSimb)==0) return ptr->locMem;
+		return -1;
+	}
+//end gerador de codigo
+
+
 
 void yyerror(const char *str) {
 	printf("erro sintatico\n");
 }
-
-/* Procedure emitRO emits a register-only
- * TM instruction
- * op = the opcode
- * r = target register
- * s = 1st source register
- * t = 2nd source register
- * c = a comment to be printed if TraceCode is TRUE
- */
-void emitRO(char* op, int r, int s, int t, char *c){
-	fprintf(yyout,"%3d:  %5s  %d,%d,%d ",emitLoc++,op,r,s,t);
-	//if (TraceCode) fprintf(code,"\t%s",c) ;
-	fprintf(yyout,"\n") ;
-	//if (highEmitLoc < emitLoc) highEmitLoc = emitLoc ;
-} /* emitRO */
-
-/* Procedure emitRM emits a register-to-memory
- * TM instruction
- * op = the opcode
- * r = target register
- * d = the offset
- * s = the base register
- * c = a comment to be printed if TraceCode is TRUE
- */
-void emitRM(char* op, int r, int d, int s, char *c){ 
-	fprintf(yyout,"%3d:  %5s  %d,%d(%d) ",emitLoc++,op,r,d,s);
-	//if (TraceCode) fprintf(code,"\t%s",c) ;
-	fprintf(yyout,"\n") ;
-	//if (highEmitLoc < emitLoc)  highEmitLoc = emitLoc ;
-} /* emitRM */
 
 int main(int argc, char **argv){
 	#if YYDEBUG
