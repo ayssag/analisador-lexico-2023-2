@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include "sintaxe.tab.h"
 %}
-%x SC_COMMENT
 
-IDENTIFIER	[a-zA-Z]+
+
+IDENTIFIER	[a-zA-Z][a-zA-Z0-9]*
 
 NUMBER	[0-9]+
 
@@ -30,13 +30,17 @@ NUMBER	[0-9]+
 ";"				{ return T_SEMICOL;	}
 ":=" 			{ return T_ASSIGN; 	}
 [\n\t\r ]+		{;}	/* ignore whitespace */
-.		        {return yytext[0];}
 
 {NUMBER}		{   
                     yylval.numero = atoi(yytext);
                     return NUMBER;	
                 }
-{IDENTIFIER}	{ return IDENTIFIER;}
+{IDENTIFIER}	{ 
+                    yylval.cadeia= (char *) strdup(yytext);
+                    return IDENTIFIER;
+                }
+
+.		        {return yytext[0];}
 
 %%
 
