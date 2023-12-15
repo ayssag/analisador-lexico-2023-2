@@ -15,7 +15,7 @@
 
 	int savedLoc1;
 	int savedLoc2;
-
+	int currentLoc;
 	int tmp_offset = 0;
 
 	//begin semantico
@@ -108,15 +108,32 @@ statement:			if_stmt				{;}
 					|read_stmt			{;}
 					|write_stmt			{;}
 ;
-if_stmt:			T_IF exp T_THEN stmt_sequence T_END 						{;}
-					|T_IF exp T_THEN stmt_sequence T_ELSE stmt_sequence T_END	{;}		
+if_stmt:			T_IF exp T_THEN {
+						// savedLoc2 = emitSkip(1) ;
+         				// currentLoc = emitSkip(0) ;
+         				// emitBackup(savedLoc1) ;
+         				// emitRM_Abs("JEQ",ac,currentLoc,"if: jmp to else");
+         				// emitRestore() ;
+					}
+					stmt_sequence T_END {;}
+
+					|T_IF exp T_THEN {
+
+					} 
+					stmt_sequence T_ELSE {
+
+					}
+					stmt_sequence T_END	{;}		
 ;
 repeat_stmt: 		T_REPEAT {
-						/*savedLoc1 = emitSkip(0)*/;
+						savedLoc1 = emitSkip(0);
 					}
-					stmt_sequence{
-						/*emitRM_Abs("JEQ",ac,savedLoc1,"repeat: retorna à origem")*/;
-					} T_UNTIL exp {;}
+					stmt_sequence{;} 
+					T_UNTIL exp {
+
+						strinstr = "JEQ", strdesc = "repeat: retorna à origem";
+						emitRM_Abs((char*) strinstr.c_str(),ac,savedLoc1,(char*) strdesc.c_str());
+					}
 ; 
 assign_stmt: 		IDENTIFIER T_ASSIGN exp 	 {
 						if(!constaTabSimb($1)){
@@ -147,33 +164,43 @@ exp: 				simple_exp comparison_op simple_exp 	{;}
 comparison_op: 		T_LT|T_EQ {;}
 ;
 simple_exp:			simple_exp {
-    					emitRM("ST", ac, tmp_offset--, mp, "dando store da esquerda");
+						strinstr = "ST", strdesc = "dando store da esquerda";
+    					emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
   					}
 					addop term				{;}
 					|term					{;}
 ;
 addop:				T_PLUS{
-						emitRM("LD", ac1, ++tmp_offset, mp, "dando load da esquerda");
-						emitRO("ADD", ac, ac1, ac, "operacao +");
+						strinstr = "LD", strdesc = "dando load da esquerda";
+						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
+						strinstr = "ADD", strdesc = "operacao +";
+						emitRO((char*) strinstr.c_str(), ac, ac1, ac, (char*) strdesc.c_str());
 					}
 					|T_MINUS{
-						emitRM("LD", ac1, ++tmp_offset, mp, "dando load da esquerda");
-						emitRO("SUB", ac, ac1, ac, "operacao -");
+						strinstr = "LD", strdesc = "dando load da esquerda";
+						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
+						strinstr = "SUB", strdesc = "operacao -";
+						emitRO((char*) strinstr.c_str(), ac, ac1, ac, (char*) strdesc.c_str());
 					}
 ;
 term:				term{
-						emitRM("ST", ac, tmp_offset--, mp, "dando store da esquerda");
+						strinstr = "ST", strdesc = "dando store da esquerda";
+    					emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
 					}
 					mulop factor	{;} 
 					|factor				{;}
 ;
 mulop:				T_MUL{
-						emitRM("LD", ac1, ++tmp_offset, mp, "dando load da esquerda");
-						emitRO("MUL", ac, ac1, ac, "operacao *");
+						strinstr = "LD", strdesc = "dando load da esquerda";
+						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
+						strinstr = "MUL", strdesc = "operacao *";
+						emitRO((char*) strinstr.c_str(), ac, ac1, ac, (char*) strdesc.c_str());
 					}
   					|T_DIV{
-						emitRM("LD", ac1, ++tmp_offset, mp, "dando load da esquerda");
-						emitRO("DIV", ac, ac1, ac, "operacao *");
+						strinstr = "LD", strdesc = "dando load da esquerda";
+						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
+						strinstr = "DIV", strdesc = "operacao +";
+						emitRO((char*) strinstr.c_str(), ac, ac1, ac, (char*) strdesc.c_str());
 					}
 ;
 factor:				T_LPAR exp T_RPAR 		{;}
@@ -258,14 +285,15 @@ factor:				T_LPAR exp T_RPAR 		{;}
 	int emitSkip(int howMany){
 		int i = emitLoc;
 		emitLoc += howMany ;
-		if (highEmitLoc < emitLoc)  highEmitLoc = emitLoc ;
+		//if (highEmitLoc < emitLoc)  highEmitLoc = emitLoc ;
 		return i;
 	}
 
 	void emitRM_Abs( char *op, int r, int a, char * c){ 
 		fprintf(yyout,"%3d:  %5s  %d,%d(%d) ", emitLoc,op,r,a-(emitLoc+1),pc);
 		++emitLoc ;
-		if (highEmitLoc < emitLoc) highEmitLoc = emitLoc ;
+		fprintf(yyout,"\n") ;
+		//if (highEmitLoc < emitLoc) highEmitLoc = emitLoc ;
 	}
 
 	int recuperaLocMemId(char *nomeSimb) {
