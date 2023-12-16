@@ -4,6 +4,7 @@
 	#include <stdio.h> 
 	#include <string>
 	#include <cstring>
+	#include <stack>
 	#include "louden/code.h"
 	
 	#define YYDEBUG 1
@@ -13,11 +14,12 @@
 	extern FILE* yyin;
 	extern FILE* yyout;
 
-	int savedLoc1;
-	int savedLoc2;
-	int currentLoc;
+	// int savedLoc1;
+	// int savedLoc2;
+	// int currentLoc;
 	int tmp_offset = 0;
-
+	std::stack <int> savedLoc1, savedLoc2, currentLoc;
+	
 	//begin semantico
 		struct regTabSimb {
 			char *nome; /* nome do simbolo */
@@ -87,198 +89,208 @@
 %%
 /* Regras definindo a GLC e acoes correspondentes */
 /* neste nosso exemplo quase todas as acoes estao vazias */
-program:			stmt_sequence	{
-						printf("\nSintaxe ok.\n");
-						if (erroSemantico) 
-							printf("\nErro semantico: esqueceu de declarar alguma variavel que usou...\n");
-						else 
-							printf("\nSemantica ok: se variaveis usadas, elas foram declaradas ok.\n");
-		
-					}
-					|/* empty */	{
-						printf ("Sintaxe incorreta!\n");	
-					}
+program:		stmt_sequence	{
+					printf("\nSintaxe ok.\n");
+					if (erroSemantico) 
+						printf("\nErro semantico: esqueceu de declarar alguma variavel que usou...\n");
+					else 
+						printf("\nSemantica ok: se variaveis usadas, elas foram declaradas ok.\n");
+	
+				}
+				|/* empty */	{
+					printf ("Sintaxe incorreta!\n");	
+				}
 ;
-stmt_sequence:		stmt_sequence T_SEMICOL statement 	{;}
-					|statement					{;}
+stmt_sequence:	stmt_sequence T_SEMICOL statement 	{;}
+				|statement					{;}
 ;
-statement:			if_stmt				{;}
-					|repeat_stmt		{;}
-					|assign_stmt		{;}
-					|read_stmt			{;}
-					|write_stmt			{;}
+statement:		if_stmt				{;}
+				|repeat_stmt		{;}
+				|assign_stmt		{;}
+				|read_stmt			{;}
+				|write_stmt			{;}
 ;
-if_stmt:			T_IF exp{
-         				savedLoc1 = emitSkip(1) ;
-						} T_THEN stmt_sequence{
-							savedLoc2 = emitSkip(1) ;
-							currentLoc = emitSkip(0) ;
-							emitBackup(savedLoc1) ;
-							
-							strinstr = "JEQ", strdesc = "if: jmp to else";
-							emitRM_Abs((char*) strinstr.c_str(),ac,currentLoc,(char*) strdesc.c_str());
-							
-							emitRestore() ;
-						} T_END
+if_stmt:		T_IF exp{
+					//savedLoc1 = emitSkip(1) ;
+					savedLoc1.push(emitSkip(1));
+					} T_THEN stmt_sequence{
+						//savedLoc2 = emitSkip(1) ;
+						savedLoc2.push(emitSkip(1));						
+						//currentLoc = emitSkip(0) ;
+						currentLoc.push(emitSkip(1));
+						
+						//emitBackup(savedLoc1) ;
+						emitBackup(savedLoc1.top()) ;
+						savedLoc1.pop();
+						
+						strinstr = "JEQ", strdesc = "if: jmp to else";
+						//emitRM_Abs((char*) strinstr.c_str(),ac,currentLoc,(char*) strdesc.c_str());
+						emitRM_Abs((char*) strinstr.c_str(),ac,currentLoc.top(),(char*) strdesc.c_str());
+						currentLoc.pop();
 
-					|T_IF exp{
-						savedLoc1 = emitSkip(1) ;
-						} T_THEN stmt_sequence{
-							savedLoc2 = emitSkip(1) ;
-							currentLoc = emitSkip(0) ;
-							emitBackup(savedLoc1) ;
-							
-							strinstr = "JEQ", strdesc = "if: jmp to else";
-							emitRM_Abs((char*) strinstr.c_str(),ac,currentLoc,(char*) strdesc.c_str());
-							
-							emitRestore() ;
-						}T_ELSE stmt_sequence{
-							currentLoc = emitSkip(0) ;
-							emitBackup(savedLoc2) ;
-							//emitRM_Abs("LDA",pc,currentLoc,"jmp to end") ;
-							strinstr = "LDA", strdesc = "jmp to end";
-							emitRM_Abs((char*) strinstr.c_str(),pc,currentLoc,(char*) strdesc.c_str());
-							emitRestore() ;
-						}T_END		
+						emitRestore() ;
+					}else_case T_END		
 ;
-repeat_stmt: 		T_REPEAT {
-						savedLoc1 = emitSkip(0);
-					}
-					stmt_sequence{;} 
-					T_UNTIL exp {
+else_case: 		/*nothing */{savedLoc2.pop();}
+				|T_ELSE stmt_sequence{
+					//currentLoc = emitSkip(0) ;
+					currentLoc.push(emitSkip(0));
+					
+					//emitBackup(savedLoc2) ;
+					emitBackup(savedLoc2.top());
+					savedLoc2.pop();
 
+					//emitRM_Abs("LDA",pc,currentLoc,"jmp to end") ;
+					strinstr = "LDA", strdesc = "jmp to end";
+					
+					//emitRM_Abs((char*) strinstr.c_str(),pc,currentLoc,(char*) strdesc.c_str());
+					emitRM_Abs((char*) strinstr.c_str(),pc,currentLoc.top(),(char*) strdesc.c_str());
+					currentLoc.pop();
+
+					emitRestore() ;
+				}
+;
+repeat_stmt: 	T_REPEAT {
+					//savedLoc1 = emitSkip(0);
+					savedLoc1.push(emitSkip(0));
+					}stmt_sequence T_UNTIL exp {
 						strinstr = "JEQ", strdesc = "repeat: retorna à origem";
-						emitRM_Abs((char*) strinstr.c_str(),ac,savedLoc1,(char*) strdesc.c_str());
+
+						//emitRM_Abs((char*) strinstr.c_str(),ac,savedLoc1,(char*) strdesc.c_str());
+						emitRM_Abs((char*) strinstr.c_str(),ac,savedLoc1.top(),(char*) strdesc.c_str());
+						savedLoc1.pop();
 					}
 ; 
-assign_stmt: 		IDENTIFIER T_ASSIGN exp 	 {
-						if(!constaTabSimb($1)){
-							colocaSimb($1,strtypeint,strvar,strbool,proxLocMemVar++);
-						}
+assign_stmt: 	IDENTIFIER T_ASSIGN exp {
+					if(!constaTabSimb($1)){
+						colocaSimb($1,strtypeint,strvar,strbool,proxLocMemVar++);
+					}
+					locMemId = recuperaLocMemId($1);
+					strinstr = "ST", strdesc = "atribuicao: armazena valor";
+					emitRM((char*) strinstr.c_str(),ac,locMemId,gp,(char*) strdesc.c_str());
+					}
+;
+read_stmt: 		T_READ IDENTIFIER {
+					if(!constaTabSimb($2)){
+						colocaSimb($2,strtypeint,strvar,strbool,proxLocMemVar++);
+					}
+					strinstr = "IN", strdesc = "le o valor de inteiro";
+					emitRO((char*) strinstr.c_str(),ac,0,0,(char*) strdesc.c_str());
+					locMemId = recuperaLocMemId($2);
+					strinstr = "ST", strdesc = "atribuicao: armazena valor";
+					emitRM((char*) strinstr.c_str(),ac,locMemId,gp,(char*) strdesc.c_str());
+					}
+;
+write_stmt: 	T_WRITE exp {
+					strinstr = "OUT", strdesc = "write ac";
+					emitRO( (char*) strinstr.c_str() ,ac,0,0, (char*) strdesc.c_str() );
+					}
+;
+exp: 			simple_exp{
+						strinstr = "ST", strdesc = "dando store da esquerda";
+						emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
+					} T_EQ simple_exp 	{
+						strinstr = "LD", strdesc = "dando load da esquerda";
+						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
+
+						strinstr = "SUB", strdesc = "op <";
+						emitRO((char*) strinstr.c_str(), ac,ac1,ac, (char*) strdesc.c_str());
+
+						strinstr = "JEQ", strdesc = "br if true";
+						emitRM((char*) strinstr.c_str(),ac,2,pc,(char*) strdesc.c_str());
+
+						strinstr = "LDC", strdesc = "false case";
+						emitRM((char*) strinstr.c_str(),ac,0,ac,(char*) strdesc.c_str()) ;
+
+						strinstr = "LDA", strdesc = "unconditional jmp";
+						emitRM((char*) strinstr.c_str(),pc,1,pc,(char*) strdesc.c_str()) ;
+						
+						strinstr = "LDC", strdesc = "true case";
+						emitRM((char*) strinstr.c_str(),ac,1,ac,(char*) strdesc.c_str()) ;
+					}
+				|simple_exp{
+						strinstr = "ST", strdesc = "dando store da esquerda";
+						emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
+					}T_LT simple_exp{
+						strinstr = "LD", strdesc = "dando load da esquerda";
+						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
+						
+						//emitRO("SUB",ac,ac1,ac,"op <") ;
+						strinstr = "SUB", strdesc = "op <";
+						emitRO((char*) strinstr.c_str(),ac,ac1,ac,(char*) strdesc.c_str());
+						
+						//emitRM("JLT",ac,2,pc,"br if true") ;
+						strinstr = "JLT", strdesc = "br if true";
+						emitRM((char*) strinstr.c_str(),ac,2,pc,(char*) strdesc.c_str());
+						
+						//emitRM("LDC",ac,0,ac,"false case") ;
+						strinstr = "LDC", strdesc = "false case";
+						emitRM((char*) strinstr.c_str(),ac,0,ac,(char*) strdesc.c_str());
+
+						//emitRM("LDA",pc,1,pc,"unconditional jmp") ;
+						strinstr = "LDA", strdesc = "unconditional jmp";
+						emitRM((char*) strinstr.c_str(),pc,1,pc,(char*) strdesc.c_str());
+						
+						//emitRM("LDC",ac,1,ac,"true case") ;
+						strinstr = "LDC", strdesc = "true case";
+						emitRM((char*) strinstr.c_str(),ac,1,ac,(char*) strdesc.c_str());
+				}
+				|simple_exp 
+;
+simple_exp:		simple_exp{
+						strinstr = "ST", strdesc = "dando store da esquerda";
+						emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
+					} T_PLUS term{
+						strinstr = "LD", strdesc = "dando load da esquerda";
+						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
+						strinstr = "ADD", strdesc = "operacao +";
+						emitRO((char*) strinstr.c_str(), ac, ac1, ac, (char*) strdesc.c_str());
+					}
+				| simple_exp{
+						strinstr = "ST", strdesc = "dando store da esquerda";
+						emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
+					}T_MINUS term{
+						strinstr = "LD", strdesc = "dando load da esquerda";
+						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
+						strinstr = "SUB", strdesc = "operacao -";
+						emitRO((char*) strinstr.c_str(), ac, ac1, ac, (char*) strdesc.c_str());
+					}
+				| term 			
+;
+term:			term{
+					strinstr = "ST", strdesc = "dando store da esquerda";
+					emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
+					}T_MUL factor{
+						strinstr = "LD", strdesc = "dando load da esquerda";
+						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
+						strinstr = "MUL", strdesc = "operacao *";
+						emitRO((char*) strinstr.c_str(), ac, ac1, ac, (char*) strdesc.c_str());
+					}
+				|term{
+					strinstr = "ST", strdesc = "dando store da esquerda";
+					emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
+					}T_DIV factor{
+						strinstr = "LD", strdesc = "dando load da esquerda";
+						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
+						strinstr = "DIV", strdesc = "operacao /";
+						emitRO((char*) strinstr.c_str(), ac, ac1, ac, (char*) strdesc.c_str());
+					} 
+				|factor {;}
+;
+factor:			T_LPAR exp T_RPAR{;}
+				| NUMBER{ 
+					strinstr = "LDC", strdesc = "load const";
+					emitRM( (char*) strinstr.c_str(),ac,$1,0, (char*) strdesc.c_str() );
+					}
+				| IDENTIFIER{
+					if(!constaTabSimb($1)){
+						erroSemantico = 1 ;		
+					}
+					else{
 						locMemId = recuperaLocMemId($1);
-						strinstr = "ST", strdesc = "atribuicao: armazena valor";
-						emitRM((char*) strinstr.c_str(),ac,locMemId,gp,(char*) strdesc.c_str());
+						strinstr = "LD", strdesc = "carrega valor de id em ac";
+						emitRM((char*) strinstr.c_str(), ac, locMemId, gp, (char*) strdesc.c_str());
 					}
-;
-read_stmt: 			T_READ IDENTIFIER 	{
-						if(!constaTabSimb($2)){
-							colocaSimb($2,strtypeint,strvar,strbool,proxLocMemVar++);
-						}
-						locMemId = recuperaLocMemId($2);
-						strinstr = "ST", strdesc = "atribuicao: armazena valor";
-						emitRM((char*) strinstr.c_str(),ac,locMemId,gp,(char*) strdesc.c_str());
-					}
-;
-write_stmt: 		T_WRITE exp 	{
-						strinstr = "OUT", strdesc = "write ac";
-						emitRO( (char*) strinstr.c_str() ,ac,0,0, (char*) strdesc.c_str() );
-					}
-;
-exp: 				simple_exp{
-							strinstr = "ST", strdesc = "dando store da esquerda";
-							emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
-						} T_EQ simple_exp 	{
-							strinstr = "LD", strdesc = "dando load da esquerda";
-							emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
-
-							strinstr = "SUB", strdesc = "op <";
-							emitRO((char*) strinstr.c_str(), ac,ac1,ac, (char*) strdesc.c_str());
-
-							strinstr = "JEQ", strdesc = "br if true";
-               				emitRM((char*) strinstr.c_str(),ac,2,pc,(char*) strdesc.c_str());
-
-							strinstr = "LDC", strdesc = "false case";
-               				emitRM((char*) strinstr.c_str(),ac,0,ac,(char*) strdesc.c_str()) ;
-
-							strinstr = "LDA", strdesc = "unconditional jmp";
-               				emitRM((char*) strinstr.c_str(),pc,1,pc,(char*) strdesc.c_str()) ;
-							
-							strinstr = "LDC", strdesc = "true case";
-               				emitRM((char*) strinstr.c_str(),ac,1,ac,(char*) strdesc.c_str()) ;
-						}
-					|simple_exp{
-							strinstr = "ST", strdesc = "dando store da esquerda";
-							emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
-						}T_LT simple_exp{
-							strinstr = "LD", strdesc = "dando load da esquerda";
-							emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
-							
-							//emitRO("SUB",ac,ac1,ac,"op <") ;
-							strinstr = "SUB", strdesc = "op <";
-							emitRO((char*) strinstr.c_str(),ac,ac1,ac,(char*) strdesc.c_str());
-               				
-							//emitRM("JLT",ac,2,pc,"br if true") ;
-							strinstr = "JLT", strdesc = "br if true";
-							emitRM((char*) strinstr.c_str(),ac,2,pc,(char*) strdesc.c_str());
-               				
-							//emitRM("LDC",ac,0,ac,"false case") ;
-							strinstr = "LDC", strdesc = "false case";
-							emitRM((char*) strinstr.c_str(),ac,0,ac,(char*) strdesc.c_str());
-
-               				//emitRM("LDA",pc,1,pc,"unconditional jmp") ;
-							strinstr = "LDA", strdesc = "unconditional jmp";
-							emitRM((char*) strinstr.c_str(),pc,1,pc,(char*) strdesc.c_str());
-							
-               				//emitRM("LDC",ac,1,ac,"true case") ;
-							strinstr = "LDC", strdesc = "true case";
-							emitRM((char*) strinstr.c_str(),ac,1,ac,(char*) strdesc.c_str());
-					}
-					|simple_exp {;}
-;
-simple_exp:			simple_exp{
-							strinstr = "ST", strdesc = "dando store da esquerda";
-							emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
-						} T_PLUS term{
-							strinstr = "LD", strdesc = "dando load da esquerda";
-							emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
-							strinstr = "ADD", strdesc = "operacao +";
-							emitRO((char*) strinstr.c_str(), ac, ac1, ac, (char*) strdesc.c_str());
-						}
-					| simple_exp{
-							strinstr = "ST", strdesc = "dando store da esquerda";
-							emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
-						}T_MINUS term{
-							strinstr = "LD", strdesc = "dando load da esquerda";
-							emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
-							strinstr = "SUB", strdesc = "operacao -";
-							emitRO((char*) strinstr.c_str(), ac, ac1, ac, (char*) strdesc.c_str());
-						}
-					| term 			
-;
-term:				term{
-						strinstr = "ST", strdesc = "dando store da esquerda";
-    					emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
-						}T_MUL factor{
-							strinstr = "LD", strdesc = "dando load da esquerda";
-							emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
-							strinstr = "MUL", strdesc = "operacao *";
-							emitRO((char*) strinstr.c_str(), ac, ac1, ac, (char*) strdesc.c_str());
-						}
-					|term{
-						strinstr = "ST", strdesc = "dando store da esquerda";
-    					emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
-						}T_DIV factor{
-							strinstr = "LD", strdesc = "dando load da esquerda";
-							emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
-							strinstr = "DIV", strdesc = "operacao /";
-							emitRO((char*) strinstr.c_str(), ac, ac1, ac, (char*) strdesc.c_str());
-						} 
-					|factor				{;}
-;
-factor:				T_LPAR exp T_RPAR 		{;}
-					| NUMBER  		{ 
-						strinstr = "LDC", strdesc = "load const";
-						emitRM( (char*) strinstr.c_str(),ac,$1,0, (char*) strdesc.c_str() );
-					}
-					| IDENTIFIER	{
-						if(!constaTabSimb($1)){
-							erroSemantico = 1 ;		
-						}
-						else{
-							locMemId = recuperaLocMemId($1);
-							strinstr = "LD", strdesc = "carrega valor de id em ac";
-							emitRM((char*) strinstr.c_str(), ac, locMemId, gp, (char*) strdesc.c_str());
-						}
 					}
 ;
 %%
@@ -376,7 +388,7 @@ factor:				T_LPAR exp T_RPAR 		{;}
 
 
 void yyerror(const char *str) {
-	printf("erro sintatico\n");
+	printf("Sintaxe incorreta!\n");
 }
 
 int main(int argc, char **argv){
