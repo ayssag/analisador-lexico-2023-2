@@ -1,13 +1,30 @@
-Repositório para atividades da disciplina Compiladores 2023/2 da Universidade de Brasília.
+# Compilador para linguagem Tiny
+Projeto desenvolvido durante a disciplina de Compiladores 2023/2 da Universidade de Brasília.
 
-## Alunos:
+## Descrição
+Compilador implementado na linguagem C para a linguagem Tiny. Baseia-se na implementação apresentada no livro _Compiler Construction - Principle and Practices, Kenneth C. Louden_. 
 
-Álvaro Veloso Cavalcanti Luz- 180115391
+Para o projeto final apresentado em sala de aula e disponível nesse repositório, o grupo se dedicou a implementar as funcionalidades necessárias para a execução de um algoritmo de fatorial. O código usado como exemplo se encontra em _fatorial.tiny_.
 
-Ayssa Giovanna de Oliveira Marques - 170100065
+### Funcionalidade implementadas
+- [x] Entrada e saída padrão
+- [x] Leitura de arquivo
+- [x] Operações aritméticas (soma, subtração, multiplicação, divisão)
+- [x] Condicional _if_-_then_-_else_
+- [x] Laço de repetição _while_
 
-Stefano Luppi Spósito - 180043242
+### Funcionalidades não implementadas:
+- [ ] Condicional _if_ aninhado
 
-Thiago Elias dos Reis - 190126892
+## Metodologia
+O projeto foi desenvolvido a partir de _peer programming_, através de reuniões realizadas pelo _Discord_ utilizando a IDE do _Visual Studio Code_.  
+
+### Participantes 
+| Nome                               | Matrícula |
+|------------------------------------|-----------|
+| Álvaro Veloso Cavalcanti Luz       | 180115391 |
+| Ayssa Giovanna de Oliveira Marques | 170100065 |
+| Stefano Luppi Spósito              | 180043242 |
+| Thiago Elias dos Reis              | 190126892 |
 
 
