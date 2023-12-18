@@ -16,7 +16,7 @@ Para o projeto final apresentado em sala de aula e disponível nesse repositóri
 - [x] Condicional _if_ aninhado
 
 ### Funcionalidades não implementadas
-- [x] Suporte a comentários
+- [ ] Suporte a comentários
 
 ## Metodologia
 O projeto foi desenvolvido a partir de _peer programming_, através de reuniões realizadas pelo _Discord_ utilizando a IDE do _Visual Studio Code_.  
