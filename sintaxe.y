@@ -194,7 +194,7 @@ exp: 			simple_exp{
 						strinstr = "LD", strdesc = "dando load da esquerda";
 						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
 
-						strinstr = "SUB", strdesc = "op <";
+						strinstr = "SUB", strdesc = "op =";
 						emitRO((char*) strinstr.c_str(), ac,ac1,ac, (char*) strdesc.c_str());
 
 						strinstr = "JEQ", strdesc = "br if true";
@@ -239,7 +239,7 @@ exp: 			simple_exp{
 				|simple_exp{
 						strinstr = "ST", strdesc = "dando store da esquerda";
 						emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
-					}T_LT simple_exp{
+					}T_GT simple_exp{
 						strinstr = "LD", strdesc = "dando load da esquerda";
 						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
 						
