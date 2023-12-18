@@ -6,7 +6,7 @@ Compilador implementado na linguagem C para a linguagem Tiny. Baseia-se na imple
 
 Para o projeto final apresentado em sala de aula e disponível nesse repositório, o grupo se dedicou a implementar as funcionalidades necessárias para a execução de um algoritmo de fatorial. O código usado como exemplo se encontra em _fatorial.tiny_.
 
-### Funcionalidade implementadas
+### Funcionalidades implementadas
 - [x] Entrada e saída padrão
 - [x] Leitura de arquivo
 - [x] Operações aritméticas (soma, subtração, multiplicação, divisão)
@@ -14,6 +14,9 @@ Para o projeto final apresentado em sala de aula e disponível nesse repositóri
 - [x] Condicional _if_-_then_-_else_
 - [x] Laço de repetição _repeat_-_until_
 - [x] Condicional _if_ aninhado
+
+### Funcionalidades não implementadas
+- [x] Suporte a comentários
 
 ## Metodologia
 O projeto foi desenvolvido a partir de _peer programming_, através de reuniões realizadas pelo _Discord_ utilizando a IDE do _Visual Studio Code_.  
