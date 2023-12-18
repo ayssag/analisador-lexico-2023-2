@@ -120,7 +120,7 @@ if_stmt:		T_IF exp{
 						//savedLoc2 = emitSkip(1) ;
 						savedLoc2.push(emitSkip(1));						
 						//currentLoc = emitSkip(0) ;
-						currentLoc.push(emitSkip(1));
+						currentLoc.push(emitSkip(0));
 						
 						//emitBackup(savedLoc1) ;
 						emitBackup(savedLoc1.top()) ;
