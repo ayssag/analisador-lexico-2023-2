@@ -79,6 +79,8 @@
 %token T_SEMICOL
 %token T_LT
 %token T_GT
+%token T_LE
+%token T_GE
 %token T_EQ
 %token T_PLUS
 %token T_MINUS
@@ -249,6 +251,60 @@ exp: 			simple_exp{
 						
 						//emitRM("JGT",ac,2,pc,"br if true") ;
 						strinstr = "JGT", strdesc = "br if true";
+						emitRM((char*) strinstr.c_str(),ac,2,pc,(char*) strdesc.c_str());
+						
+						//emitRM("LDC",ac,0,ac,"false case") ;
+						strinstr = "LDC", strdesc = "false case";
+						emitRM((char*) strinstr.c_str(),ac,0,ac,(char*) strdesc.c_str());
+
+						//emitRM("LDA",pc,1,pc,"unconditional jmp") ;
+						strinstr = "LDA", strdesc = "unconditional jmp";
+						emitRM((char*) strinstr.c_str(),pc,1,pc,(char*) strdesc.c_str());
+						
+						//emitRM("LDC",ac,1,ac,"true case") ;
+						strinstr = "LDC", strdesc = "true case";
+						emitRM((char*) strinstr.c_str(),ac,1,ac,(char*) strdesc.c_str());
+				}
+				|simple_exp{
+						strinstr = "ST", strdesc = "dando store da esquerda";
+						emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
+					}T_LE simple_exp{
+						strinstr = "LD", strdesc = "dando load da esquerda";
+						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
+						
+						//emitRO("SUB",ac,ac1,ac,"op <=") ;
+						strinstr = "SUB", strdesc = "op <=";
+						emitRO((char*) strinstr.c_str(),ac,ac1,ac,(char*) strdesc.c_str());
+						
+						//emitRM("JLE",ac,2,pc,"br if true") ;
+						strinstr = "JLE", strdesc = "br if true";
+						emitRM((char*) strinstr.c_str(),ac,2,pc,(char*) strdesc.c_str());
+						
+						//emitRM("LDC",ac,0,ac,"false case") ;
+						strinstr = "LDC", strdesc = "false case";
+						emitRM((char*) strinstr.c_str(),ac,0,ac,(char*) strdesc.c_str());
+
+						//emitRM("LDA",pc,1,pc,"unconditional jmp") ;
+						strinstr = "LDA", strdesc = "unconditional jmp";
+						emitRM((char*) strinstr.c_str(),pc,1,pc,(char*) strdesc.c_str());
+						
+						//emitRM("LDC",ac,1,ac,"true case") ;
+						strinstr = "LDC", strdesc = "true case";
+						emitRM((char*) strinstr.c_str(),ac,1,ac,(char*) strdesc.c_str());
+				}
+				|simple_exp{
+						strinstr = "ST", strdesc = "dando store da esquerda";
+						emitRM((char*) strinstr.c_str(), ac, tmp_offset--, mp, (char*) strdesc.c_str());
+					}T_GE simple_exp{
+						strinstr = "LD", strdesc = "dando load da esquerda";
+						emitRM((char*) strinstr.c_str(), ac1, ++tmp_offset, mp, (char*) strdesc.c_str());
+						
+						//emitRO("SUB",ac,ac1,ac,"op >=") ;
+						strinstr = "SUB", strdesc = "op >=";
+						emitRO((char*) strinstr.c_str(),ac,ac1,ac,(char*) strdesc.c_str());
+						
+						//emitRM("JGE",ac,2,pc,"br if true") ;
+						strinstr = "JGE", strdesc = "br if true";
 						emitRM((char*) strinstr.c_str(),ac,2,pc,(char*) strdesc.c_str());
 						
 						//emitRM("LDC",ac,0,ac,"false case") ;
