@@ -10,6 +10,7 @@ Para o projeto final apresentado em sala de aula e disponível nesse repositóri
 - [x] Entrada e saída padrão
 - [x] Leitura de arquivo
 - [x] Operações aritméticas (soma, subtração, multiplicação, divisão)
+- [x] Operadores de comparação (<,>,<=,>=)
 - [x] Condicional _if_-_then_-_else_
 - [x] Laço de repetição _while_
 
@@ -28,12 +29,30 @@ O projeto foi desenvolvido a partir de _peer programming_, através de reuniões
 | Thiago Elias dos Reis              | 190126892 |
 
 ## Execução
+## Preparando a TVM (Tiny Virtual Machine) do Louden para execução
+```
+cd ./louden
+```
+```
+make clean
+```
 ```
 make
 ```
+## Compilando um programa .tiny
+Na pasta raiz:
+```
+cd ..
+```
+1. Compilar os analisadores léxico e sintático
+```
+make
+```
+2. Gerar código assembly
 ```
 ./a.out fatorial.tiny fatorial.asm
 ```
+3. Executar o código gerado na TVM
 ```
 ./tm.o fatorial.asm
 ```
