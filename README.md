@@ -27,4 +27,15 @@ O projeto foi desenvolvido a partir de _peer programming_, através de reuniões
 | Stefano Luppi Spósito              | 180043242 |
 | Thiago Elias dos Reis              | 190126892 |
 
+## Execução
+```
+make
+```
+```
+./a.out fatorial.tiny fatorial.asm
+```
+```
+./tm.o fatorial.asm
+```
+
 
