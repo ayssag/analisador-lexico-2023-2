@@ -24,6 +24,9 @@ NUMBER	[0-9]+
 "*"				{ return T_MUL;		}
 "/"				{ return T_DIV;		}
 "<"				{ return T_LT;		}
+">"				{ return T_GT;		}
+"<="            { return T_LE;      }
+">="            { return T_GE;      }
 "="				{ return T_EQ;		}
 "("				{ return T_LPAR;	}
 ")"				{ return T_RPAR;	}
