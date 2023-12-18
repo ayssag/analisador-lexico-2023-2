@@ -12,10 +12,8 @@ Para o projeto final apresentado em sala de aula e disponível nesse repositóri
 - [x] Operações aritméticas (soma, subtração, multiplicação, divisão)
 - [x] Operadores de comparação (<,>,<=,>=)
 - [x] Condicional _if_-_then_-_else_
-- [x] Laço de repetição _while_
-
-### Funcionalidades não implementadas:
-- [ ] Condicional _if_ aninhado
+- [x] Laço de repetição _repeat_-_until_
+- [x] Condicional _if_ aninhado
 
 ## Metodologia
 O projeto foi desenvolvido a partir de _peer programming_, através de reuniões realizadas pelo _Discord_ utilizando a IDE do _Visual Studio Code_.  
